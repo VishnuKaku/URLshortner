@@ -1,36 +1,45 @@
-// Analytics routes 
 // src/routes/analyticsRoutes.ts
-import { Router } from 'express';
-
+import { Router, Request, Response, NextFunction } from 'express';
+import { IRequestWithUser } from '../models/interfaces';
+import { AnalyticsController } from '../controllers/analyticsController';
 import { authenticate } from '../middleware/auth';
 import { rateLimiter } from '../middleware/rateLimiter';
-import { AnalyticsController } from '../controllers/analyticsController';
 
 const router = Router();
 const analyticsController = new AnalyticsController();
 
-// Get URL-specific analytics
+// Type-safe middleware wrapper
+const withUser = (
+  handler: (req: IRequestWithUser, res: Response, next: NextFunction) => Promise<void>
+) => {
+  return async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      await handler(req as IRequestWithUser, res, next);
+    } catch (error) {
+      next(error);
+    }
+  };
+};
+
 router.get(
   '/:alias',
   authenticate,
   rateLimiter,
-  analyticsController.getUrlAnalytics
+  withUser(analyticsController.getUrlAnalytics)
 );
 
-// Get topic-based analytics
 router.get(
   '/topic/:topic',
   authenticate,
   rateLimiter,
-  analyticsController.getTopicAnalytics
+  withUser(analyticsController.getTopicAnalytics)
 );
 
-// Get overall analytics
 router.get(
   '/overall',
   authenticate,
   rateLimiter,
-  analyticsController.getOverallAnalytics
+  withUser(analyticsController.getOverallAnalytics)
 );
 
 export default router;

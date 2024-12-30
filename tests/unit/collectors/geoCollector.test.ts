@@ -1,32 +1,48 @@
-// Unit test for geo collector 
-// src/analytics/collectors/geoCollector.ts
-import { ILocation } from '../../models/interfaces';
-import axios from 'axios';
+// tests/unit/collectors/geoCollector.test.ts
+import { GeoCollector } from '../../../src/analytics/collectors/geoCollector';
+import geoip from 'geoip-lite';
 
-export class GeoCollector {
-  private readonly geoApiKey: string;
+// Update the mock to match the exact shape of geoip.lookup return value
+jest.mock('geoip-lite', () => ({
+  lookup: jest.fn().mockReturnValue({
+    country: 'US',
+    region: 'NY',
+    city: 'New York',
+    timezone: 'America/New_York',
+    ll: [40.7128, -74.0060],  // Adding required ll property
+    range: [3479298048, 3479300095],  // Adding required range property
+    metro: 501,  // Adding required metro property
+    area: 1  // Adding required area property
+  })
+}));
 
-  constructor() {
-    this.geoApiKey = process.env.GEO_API_KEY || '';
-  }
+describe('GeoCollector', () => {
+    it('should collect geolocation information for a valid IP', async () => {
+        const mockGeo = {
+            country: 'US',
+            region: 'NY',
+            city: 'New York',
+            timezone: 'America/New_York',
+        };
 
-  async collect(ipAddress: string): Promise<ILocation> {
-    try {
-      // Using a free IP geolocation service (replace with your preferred provider)
-      const response = await axios.get(
-        `https://api.ipstack.com/${ipAddress}?access_key=${this.geoApiKey}`
-      );
+        const geoCollector = new GeoCollector();
+        const location = await geoCollector.collect('8.8.8.8');
 
-      return {
-        country: response.data.country_name,
-        city: response.data.city,
-        region: response.data.region_name,
-        latitude: response.data.latitude,
-        longitude: response.data.longitude
-      };
-    } catch (error) {
-      console.error('Geolocation error:', error);
-      return {};
-    }
-  }
-}
+        expect(location).toEqual(mockGeo);
+    });
+
+    it('should return default values for an invalid IP', async () => {
+        // Override the mock for this specific test
+        (geoip.lookup as jest.Mock).mockReturnValueOnce(null);
+
+        const geoCollector = new GeoCollector();
+        const location = await geoCollector.collect('invalid-ip');
+
+        expect(location).toEqual({
+            country: 'unknown',
+            region: 'unknown',
+            city: 'unknown',
+            timezone: 'unknown',
+        });
+    });
+});

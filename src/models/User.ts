@@ -25,6 +25,7 @@ const userSchema = new Schema({
     type: String,
     required: true
   },
+  googleId: { type: String, required: false },
   apiKey: {
     type: String,
     unique: true

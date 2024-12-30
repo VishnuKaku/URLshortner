@@ -1,17 +1,18 @@
-// Auth service 
 // src/services/authService.ts
 import { OAuth2Client } from 'google-auth-library';
 import jwt from 'jsonwebtoken';
 import { User } from '../models/User';
 import { IUserDocument, IUserPayload } from '../models/interfaces';
-import { authConfig } from '../config/auth.config';
-import { ApiError } from '../utils/errorHandler';
+import authConfig from '../config/auth.config';
+import { AppError } from '../utils/errorHandler';
 
 export class AuthService {
   private googleClient: OAuth2Client;
 
   constructor() {
-    this.googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+    this.googleClient = new OAuth2Client(
+      process.env.GOOGLE_CLIENT_ID
+    );
   }
 
   async authenticateWithGoogle(token: string): Promise<{ user: IUserDocument; accessToken: string }> {
@@ -23,30 +24,32 @@ export class AuthService {
 
       const payload = ticket.getPayload();
       if (!payload || !payload.email) {
-        throw new ApiError('Invalid Google token', 401);
+        throw new AppError('Invalid Google token', 401);
       }
 
-      // Find or create user
       let user = await User.findOne({ email: payload.email });
+      
       if (!user) {
         user = await User.create({
           email: payload.email,
           googleId: payload.sub,
+          createdAt: new Date()
         });
       }
 
-      // Generate JWT
-      const accessToken = this.generateToken(user);
+      // Type assertion since we know the structure matches IUserDocument
+      const userDoc = user as unknown as IUserDocument;
+      const accessToken = this.generateToken(userDoc);
 
-      return { user, accessToken };
+      return { user: userDoc, accessToken };
     } catch (error) {
-      throw new ApiError('Authentication failed', 401);
+      throw new AppError('Authentication failed', 401);
     }
   }
 
   private generateToken(user: IUserDocument): string {
     const payload: IUserPayload = {
-      id: user.id,
+      id: user._id.toString(),
       email: user.email
     };
 

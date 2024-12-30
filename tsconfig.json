@@ -1,14 +1,24 @@
 {
   "compilerOptions": {
-    "target": "ES6",
-    "module": "commonjs",
+    "target": "ESNext", // Support the latest JavaScript features
+    "module": "ESNext", // Use ECMAScript modules
     "outDir": "./dist",
-    "rootDir": ".",  // Set rootDir to the project root
+    "rootDir": ".",
     "strict": true,
     "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "moduleResolution": "node",
+    "resolveJsonModule": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"]
+    },
     "types": ["jest", "node"],
-    "typeRoots": ["./node_modules/@types"]
+    "allowSyntheticDefaultImports": true, // Allow default imports for compatibility
+    "experimentalDecorators": true, // If using decorators
+    "emitDecoratorMetadata": true // If using metadata reflection
   },
   "include": ["src/**/*", "tests/**/*"],
-  "exclude": ["node_modules"]
+  "exclude": ["node_modules", "dist"]
 }

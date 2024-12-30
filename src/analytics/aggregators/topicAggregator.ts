@@ -1,48 +1,67 @@
-// Topic aggregator logic 
-// src/analytics/aggregators/TopicAggregator.ts
-import { IUrlDocument, ITopicAnalytics, IClickInfo } from '../../interfaces';
-import { AnalyticsModel } from '../../models/Analytics';
-import { UrlModel } from '../../models/Url';
+import { IUrlDocument, ITopicAnalytics, IClickInfo, IDeviceInfo, IAnalytics } from '../../models/interfaces';
+import Analytics from '../../models/Analytics';
+import { Url } from '@/models/Url';
+// import { Click } from '../../models/Click';
+
+interface DeviceInfo {
+  deviceName: string;
+}
+
+interface ClickData {
+  deviceInfo: DeviceInfo;
+  ipAddress: string;
+  timestamp: Date;
+}
+
+interface AggregatedData {
+  topicName: string;
+  timeframe: {
+    start: Date;
+    end: Date;
+  };
+  totalClicks: number;
+  uniqueVisitors: number;
+  deviceStats: Record<string, number>;
+  osStats: Record<string, number>;
+  clicks: ClickData[];
+}
 
 export class TopicAggregator {
-  public async aggregate(topic: string, startDate: Date, endDate: Date): Promise<ITopicAnalytics> {
-    // Get all URLs for the topic
-    const urls = await UrlModel.find({ topics: topic });
+  static async aggregate(topic: string, startDate: Date, endDate: Date): Promise<AggregatedData> {
+    const urls = await Url.find({ topics: topic });
     const urlIds = urls.map(url => url._id);
 
-    // Get analytics for these URLs
-    const analytics = await AnalyticsModel.find({
+    const analytics = (await Analytics.find({
       urlId: { $in: urlIds },
       accessTime: { $gte: startDate, $lte: endDate }
-    });
+    }).populate('userId')) as IAnalytics[];
+    
 
-    // Aggregate click data
-    const clicks: IClickInfo[] = analytics.map(record => ({
+    const clicks: ClickData[] = analytics.map(record => ({
       timestamp: record.accessTime,
-      country: record.geoInfo.country,
-      device: record.deviceInfo.type,
-      os: record.osInfo.name,
-      referrer: record.referrer
+      ipAddress: record.ipAddress,
+      deviceInfo: {
+        deviceName: record.device?.deviceName || 'unknown',
+      }
     }));
 
-    // Calculate statistics
     const totalClicks = clicks.length;
-    const uniqueVisitors = new Set(analytics.map(record => record.ipAddress)).size;
+    const uniqueVisitors = new Set(clicks.map(click => click.ipAddress)).size;
 
-    // Calculate device distribution
-    const deviceStats = clicks.reduce((acc, click) => {
-      acc[click.device] = (acc[click.device] || 0) + 1;
+    const deviceStats = clicks.reduce((acc: Record<string, number>, click) => {
+      const deviceName = click.deviceInfo.deviceName;
+      acc[deviceName] = (acc[deviceName] || 0) + 1;
       return acc;
-    }, {} as Record<string, number>);
+    }, {});
 
-    // Calculate OS distribution
-    const osStats = clicks.reduce((acc, click) => {
-      acc[click.os] = (acc[click.os] || 0) + 1;
+    const osStats = clicks.reduce((acc: Record<string, number>, click) => {
+      const osName = click.deviceInfo.deviceName;
+      acc[osName] = (acc[osName] || 0) + 1;
       return acc;
-    }, {} as Record<string, number>);
+    }, {});
 
     return {
-      topic,
+      topicName: topic,
       timeframe: {
         start: startDate,
         end: endDate

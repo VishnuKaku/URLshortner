@@ -1,7 +1,6 @@
-// Geo collector logic 
-// src/analytics/collectors/GeoCollector.ts
+// src/analytics/collectors/geoCollector.ts
 import geoip from 'geoip-lite';
-import { IGeoInfo } from '../../interfaces';
+import { IGeoInfo } from '../../models/interfaces';
 
 export class GeoCollector {
   public async collect(ip: string): Promise<IGeoInfo> {
@@ -12,7 +11,7 @@ export class GeoCollector {
         country: 'unknown',
         region: 'unknown',
         city: 'unknown',
-        timezone: 'unknown'
+        timezone: 'unknown',
       };
     }
 
@@ -20,7 +19,7 @@ export class GeoCollector {
       country: geo.country,
       region: geo.region,
       city: geo.city,
-      timezone: geo.timezone
+      timezone: geo.timezone,
     };
   }
 }

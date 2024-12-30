@@ -1,22 +1,10 @@
-// OS collector logic 
-// src/analytics/collectors/OSCollector.ts
+// src/analytics/collectors/osCollector.ts
+import { UAParser } from 'ua-parser-js';
+
 export class OSCollector {
-    private parser: UAParser;
-  
-    constructor() {
-      this.parser = new UAParser();
-    }
-  
-    public collect(userAgent: string): {
-      name: string;
-      version: string;
-    } {
-      this.parser.setUA(userAgent);
-      const os = this.parser.getOS();
-  
-      return {
-        name: os.name || 'unknown',
-        version: os.version || 'unknown'
-      };
-    }
+  public collect(userAgent: string): string {
+    const parser = new UAParser();
+    const os = parser.setUA(userAgent).getOS();
+    return os.name || 'unknown';
   }
+}

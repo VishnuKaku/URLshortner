@@ -1,7 +1,7 @@
 import express, { Application } from 'express';
 import bodyParser from 'body-parser';
 import dotenv from 'dotenv';
-import { connectDatabase } from './config/database';
+import connectDatabase from './config/database';
 import urlRoutes from './routes/urlRoutes';
 import analyticsRoutes from './routes/analyticsRoutes';
 import authRoutes from './routes/authRoutes';

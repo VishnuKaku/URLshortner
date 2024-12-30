@@ -1,4 +1,3 @@
-// Integration test for URL 
 import request from 'supertest';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import mongoose from 'mongoose';
@@ -6,15 +5,25 @@ import app from '../../src/app';
 import { User } from '../../src/models/User';
 import { RedisClient } from '../../src/cache/redis/client';
 import { Url } from '../../src/models/Url';
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from '@jest/globals';
+import IORedis from 'ioredis';
+import RedisMock from 'ioredis-mock';
 
 describe('URL Integration Tests', () => {
   let mongoServer: MongoMemoryServer;
   let authToken: string;
+  let redis: IORedis; // Use IORedis type instead
 
   beforeAll(async () => {
     // Setup MongoDB Memory Server
     mongoServer = await MongoMemoryServer.create();
     await mongoose.connect(mongoServer.getUri());
+    // Initialize the Redis Mock
+    redis = new RedisMock() as unknown as IORedis; // Cast to IORedis type
+
+    // Manually set the mocked Redis client in RedisClient
+    const redisClientInstance = RedisClient.getInstance() as any;
+    redisClientInstance.client = redis;
 
     // Create test user and get auth token
     const user = await User.create({

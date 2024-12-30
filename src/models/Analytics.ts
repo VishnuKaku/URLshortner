@@ -1,58 +1,44 @@
-// Analytics model 
 // src/models/Analytics.ts
-import mongoose, { Schema, Document } from 'mongoose';
+import mongoose, { Schema, Document, ObjectId } from 'mongoose';
 
-export interface IAnalytics extends Document {
-  urlId: mongoose.Types.ObjectId;
-  userId: mongoose.Types.ObjectId;
+export interface IAnalytics {
+  _id: ObjectId;
+  urlId: ObjectId;
   accessTime: Date;
   ipAddress: string;
   userAgent: string;
-  referrer?: string;
+  device?: {
+    type?: string;
+    os?: string;
+  };
   location?: {
     country?: string;
     city?: string;
+    [key: string]: any;
   };
-  device?: {
-    type?: string;
-    browser?: string;
-    os?: string;
-  };
+  referrer?: string;
+  userId?: ObjectId;
 }
 
-const analyticsSchema = new Schema({
-  urlId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Url',
-    required: true
-  },
-  userId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true
-  },
-  accessTime: {
-    type: Date,
-    default: Date.now
-  },
-  ipAddress: {
-    type: String,
-    required: true
-  },
-  userAgent: {
-    type: String,
-    required: true
-  },
-  referrer: String,
-  location: {
-    country: String,
-    city: String
-  },
+const AnalyticsSchema = new Schema({
+  urlId: { type: Schema.Types.ObjectId, required: true },
+  accessTime: { type: Date, required: true },
+  ipAddress: { type: String, required: true },
+  userAgent: { type: String, required: true },
   device: {
-    type: String,
-    browser: String,
-    os: String
-  }
+    type: {
+      type: String
+    },
+    os: {
+      type: String
+    }
+  },
+  location: {
+    type: Object
+  },
+  referrer: { type: String },
+  userId: { type: Schema.Types.ObjectId, ref: 'User' }
 });
 
-export default mongoose.model<IAnalytics>('Analytics', analyticsSchema);
+export type IAnalyticsDocument = Document<unknown, {}, IAnalytics> & IAnalytics;
+export default mongoose.model<IAnalyticsDocument>('Analytics', AnalyticsSchema);

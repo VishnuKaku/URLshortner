@@ -1,87 +1,57 @@
-// URL service 
+// URL service
 // src/services/urlService.ts
-import { customAlphabet } from 'nanoid';
-import { Url } from '../models/Url';
+import { customAlphabet, nanoid } from 'nanoid';
+
 import { redisClient } from '../config/redis';
-import { IUrlDocument, IUrlCreate } from '../models/interfaces';
-import { ApiError } from '../utils/errorHandler';
+import { IUrlCreate } from '../models/interfaces';
+import { Url } from '../models/Url';
 
 export class UrlService {
-  private nanoid = customAlphabet('1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ', 8);
-
-  async createShortUrl(urlData: IUrlCreate, userId: string): Promise<IUrlDocument> {
+  async createShortUrl(urlData: IUrlCreate, userId: string) {
     const { longUrl, customAlias, topic } = urlData;
 
-    // Validate URL
-    if (!this.isValidUrl(longUrl)) {
-      throw new ApiError('Invalid URL provided', 400);
+    // Validate if the provided url is valid.
+    try {
+        new URL(longUrl);
+    } catch (error) {
+        throw new Error('Invalid URL provided');
     }
 
-    // Check if custom alias is available if provided
+    let shortCode: string;
     if (customAlias) {
-      const existingUrl = await Url.findOne({ shortCode: customAlias });
-      if (existingUrl) {
-        throw new ApiError('Custom alias already in use', 400);
-      }
+        shortCode = customAlias;
+        const url = await Url.findOne({ shortCode });
+         if(url) {
+             throw new Error("Custom alias already exists");
+         }
+    } else {
+        shortCode = nanoid(7);
     }
 
-    // Generate short code if no custom alias
-    const shortCode = customAlias || this.nanoid();
-
-    // Create new URL document
-    const url = await Url.create({
-      originalUrl: longUrl,
+    const newUrl = await Url.create({
+      longUrl,
       shortCode,
       userId,
-      topic,
-      isCustom: !!customAlias,
+      topic
     });
 
-    // Cache the URL mapping
-    await this.cacheUrl(shortCode, longUrl);
+    await redisClient.setEx(`url:${shortCode}`, 3600, longUrl)
 
-    return url;
+    return newUrl;
   }
 
-  async getOriginalUrl(shortCode: string): Promise<string> {
-    // Try to get from cache first
+  async getOriginalUrl(shortCode: string) {
     const cachedUrl = await redisClient.get(`url:${shortCode}`);
+
     if (cachedUrl) {
-      return cachedUrl;
+        return cachedUrl;
     }
 
-    // If not in cache, get from database
     const url = await Url.findOne({ shortCode });
     if (!url) {
-      throw new ApiError('URL not found', 404);
+      return null
     }
-
-    // Cache for future use
-    await this.cacheUrl(shortCode, url.originalUrl);
-
-    return url.originalUrl;
-  }
-
-  async getUrlsByTopic(topic: string, userId: string): Promise<IUrlDocument[]> {
-    return Url.find({ topic, userId });
-  }
-
-  async getAllUserUrls(userId: string): Promise<IUrlDocument[]> {
-    return Url.find({ userId });
-  }
-
-  private async cacheUrl(shortCode: string, originalUrl: string): Promise<void> {
-    await redisClient.set(`url:${shortCode}`, originalUrl, {
-      EX: 86400 // Cache for 24 hours
-    });
-  }
-
-  private isValidUrl(url: string): boolean {
-    try {
-      new URL(url);
-      return true;
-    } catch {
-      return false;
-    }
+    await redisClient.setEx(`url:${shortCode}`, 3600, url.get('longUrl'));
+    return url.get('longUrl');
   }
 }

@@ -1,58 +1,47 @@
-// Unit test for topic aggregator 
-// src/analytics/aggregators/topicAggregator.ts
-import { Analytics } from '../../models/Analytics';
-import { Url } from '../../models/Url';
-import { ITopicAnalytics, IClicksByDate } from '../../models/interfaces';
+// tests/unit/aggregators/topicAggregator.test.ts
+import { TopicAggregator } from '../../../src/analytics/aggregators/topicAggregator';
+import Analytics from '../../../src/models/Analytics';
+import { Url } from '../../../src/models/Url';
 
-export class TopicAggregator {
-  async aggregate(topic: string, userId: string): Promise<ITopicAnalytics> {
-    // Get all URLs for this topic
-    const urls = await Url.find({ userId, topic });
-    const urlIds = urls.map(url => url._id);
+jest.mock('../../../src/models/Analytics');
+jest.mock('../../../src/models/Url');
 
-    // Get all analytics for these URLs
-    const analytics = await Analytics.find({ urlId: { $in: urlIds } });
+describe('TopicAggregator', () => {
+    it('should aggregate topic analytics data', async () => {
+        const mockAnalytics = [
+            {
+                accessTime: new Date(),
+                ipAddress: '127.0.0.1',
+                device: {
+                    deviceName: 'desktop',
+                },
+            },
+            {
+                accessTime: new Date(),
+                ipAddress: '192.168.1.1',
+                device: {
+                    deviceName: 'mobile',
+                },
+            },
+        ] as any;
 
-    // Calculate total and unique clicks
-    const totalClicks = analytics.length;
-    const uniqueClicks = new Set(analytics.map(a => a.ipAddress)).size;
+      const mockUrls = [{
+        _id:'urlId1',
+        shortCode: 'short1'
+      }] as any;
+        (Url.find as jest.Mock).mockResolvedValue(mockUrls);
+      (Analytics.find as jest.Mock).mockReturnValue({
+          populate: jest.fn().mockResolvedValue(mockAnalytics)
+        });
 
-    // Calculate clicks by date
-    const clicksByDate = this.calculateClicksByDate(analytics);
+        const startDate = new Date();
+        const endDate = new Date();
+        const result = await TopicAggregator.aggregate('test-topic', startDate, endDate);
 
-    // Calculate per-URL statistics
-    const urlStats = await this.calculateUrlStats(urls, analytics);
-
-    return {
-      totalClicks,
-      uniqueClicks,
-      clicksByDate,
-      urls: urlStats
-    };
-  }
-
-  private calculateClicksByDate(analytics: any[]): IClicksByDate[] {
-    const clickMap = new Map<string, number>();
-    
-    analytics.forEach(analytic => {
-      const date = analytic.accessTime.toISOString().split('T')[0];
-      clickMap.set(date, (clickMap.get(date) || 0) + 1);
+        expect(result).toBeDefined();
+        expect(result.totalClicks).toBe(mockAnalytics.length);
+        expect(result.uniqueVisitors).toBe(2);
+        expect(result.deviceStats).toEqual({ desktop: 1, mobile: 1 });
+        expect(result.osStats).toEqual({ desktop: 1, mobile: 1 });
     });
-
-    return Array.from(clickMap.entries()).map(([date, count]) => ({
-      date,
-      count
-    }));
-  }
-
-  private async calculateUrlStats(urls: any[], analytics: any[]) {
-    return urls.map(url => {
-      const urlAnalytics = analytics.filter(a => a.urlId.equals(url._id));
-      return {
-        shortUrl: url.shortCode,
-        totalClicks: urlAnalytics.length,
-        uniqueClicks: new Set(urlAnalytics.map(a => a.ipAddress)).size
-      };
-    });
-  }
-}
+});

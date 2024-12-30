@@ -1,12 +1,12 @@
-// Google auth controller 
 // src/auth/google/controller.ts
-import { Request, Response, NextFunction } from 'express';
+import { Response, NextFunction } from 'express';
 import { AuthUtils } from '../../utils/auth';
 import { AppError } from '../../utils/errorHandler';
+import { IAuthRequest } from '../../models/interfaces';
 
 export class GoogleAuthController {
   public static async handleCallback(
-    req: Request,
+    req: IAuthRequest,
     res: Response,
     next: NextFunction
   ) {
@@ -16,7 +16,6 @@ export class GoogleAuthController {
       }
 
       const token = AuthUtils.generateToken(req.user);
-
       res.redirect(`/auth-success?token=${token}`);
     } catch (error) {
       next(error);

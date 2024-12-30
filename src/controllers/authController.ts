@@ -1,4 +1,3 @@
-// Auth controller 
 // src/controllers/authController.ts
 import { Request, Response, NextFunction } from 'express';
 import { AuthService } from '../services/authService';
@@ -25,8 +24,9 @@ export class AuthController {
         success: true,
         data: {
           user: {
-            id: user.id,
-            email: user.email
+            id: user._id,
+            email: user.email,
+            name: user.name
           },
           accessToken
         }

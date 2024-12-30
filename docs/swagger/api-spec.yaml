@@ -1,1 +1,262 @@
 # API Specification 
+openapi: 3.0.0
+info:
+  title: URL Shortener API
+  description: Advanced URL Shortener with Analytics, Custom Aliases, and Rate Limiting
+  version: 1.0.0
+
+servers:
+  - url: /api
+
+components:
+  securitySchemes:
+    GoogleAuth:
+      type: oauth2
+      flows:
+        implicit:
+          authorizationUrl: /auth/google
+          scopes:
+            profile: Access user profile
+            email: Access user email
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        message:
+          type: string
+        code:
+          type: integer
+
+    URLCreationRequest:
+      type: object
+      required:
+        - longUrl
+      properties:
+        longUrl:
+          type: string
+          format: uri
+        customAlias:
+          type: string
+          pattern: '^[a-zA-Z0-9-_]+$'
+        topic:
+          type: string
+          enum: [acquisition, activation, retention]
+
+    URLResponse:
+      type: object
+      properties:
+        shortUrl:
+          type: string
+          format: uri
+        createdAt:
+          type: string
+          format: date-time
+
+    ClickStats:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date
+        count:
+          type: integer
+
+    OSStats:
+      type: object
+      properties:
+        osName:
+          type: string
+        uniqueClicks:
+          type: integer
+        uniqueUsers:
+          type: integer
+
+    DeviceStats:
+      type: object
+      properties:
+        deviceName:
+          type: string
+        uniqueClicks:
+          type: integer
+        uniqueUsers:
+          type: integer
+
+    URLAnalytics:
+      type: object
+      properties:
+        totalClicks:
+          type: integer
+        uniqueClicks:
+          type: integer
+        clicksByDate:
+          type: array
+          items:
+            $ref: '#/components/schemas/ClickStats'
+        osType:
+          type: array
+          items:
+            $ref: '#/components/schemas/OSStats'
+        deviceType:
+          type: array
+          items:
+            $ref: '#/components/schemas/DeviceStats'
+
+    TopicAnalytics:
+      type: object
+      properties:
+        totalClicks:
+          type: integer
+        uniqueClicks:
+          type: integer
+        clicksByDate:
+          type: array
+          items:
+            $ref: '#/components/schemas/ClickStats'
+        urls:
+          type: array
+          items:
+            type: object
+            properties:
+              shortUrl:
+                type: string
+              totalClicks:
+                type: integer
+              uniqueClicks:
+                type: integer
+
+    OverallAnalytics:
+      type: object
+      properties:
+        totalUrls:
+          type: integer
+        totalClicks:
+          type: integer
+        uniqueClicks:
+          type: integer
+        clicksByDate:
+          type: array
+          items:
+            $ref: '#/components/schemas/ClickStats'
+        osType:
+          type: array
+          items:
+            $ref: '#/components/schemas/OSStats'
+        deviceType:
+          type: array
+          items:
+            $ref: '#/components/schemas/DeviceStats'
+
+paths:
+  /shorten:
+    post:
+      summary: Create a short URL
+      security:
+        - GoogleAuth: [profile, email]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/URLCreationRequest'
+      responses:
+        '201':
+          description: Short URL created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/URLResponse'
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /shorten/{alias}:
+    get:
+      summary: Redirect to original URL
+      parameters:
+        - name: alias
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '302':
+          description: Redirect to original URL
+        '404':
+          description: Short URL not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /analytics/{alias}:
+    get:
+      summary: Get analytics for a specific URL
+      security:
+        - GoogleAuth: [profile, email]
+      parameters:
+        - name: alias
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Analytics data retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/URLAnalytics'
+        '404':
+          description: URL not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /analytics/topic/{topic}:
+    get:
+      summary: Get analytics for a specific topic
+      security:
+        - GoogleAuth: [profile, email]
+      parameters:
+        - name: topic
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Topic analytics retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TopicAnalytics'
+        '404':
+          description: Topic not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /analytics/overall:
+    get:
+      summary: Get overall analytics for all URLs
+      security:
+        - GoogleAuth: [profile, email]
+      responses:
+        '200':
+          description: Overall analytics retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OverallAnalytics'

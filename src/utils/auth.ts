@@ -3,7 +3,8 @@
 import { Request } from 'express';
 import jwt from 'jsonwebtoken';
 import { AppError } from './errorHandler';
-import { IUserDocument } from '../interfaces';
+import { IUserDocument } from '@/models/interfaces';
+
 
 export class AuthUtils {
   public static generateToken(user: IUserDocument): string {

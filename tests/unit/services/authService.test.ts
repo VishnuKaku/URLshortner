@@ -1,4 +1,3 @@
-// Unit test for auth service 
 // tests/unit/services/authService.test.ts
 import { AuthService } from '../../../src/services/authService';
 import { User } from '../../../src/models/User';
@@ -19,19 +18,19 @@ describe('AuthService', () => {
     it('should authenticate user with valid Google token', async () => {
       const mockPayload = {
         email: 'test@example.com',
-        sub: 'google-id'
+        sub: 'google-id',
       };
 
       const mockUser = {
-        id: 'user-id',
+        _id: 'user-id',
         email: mockPayload.email,
-        googleId: mockPayload.sub
-      };
+        googleId: mockPayload.sub,
+      } ;
 
       (OAuth2Client.prototype.verifyIdToken as jest.Mock).mockResolvedValue({
-        getPayload: () => mockPayload
+        getPayload: () => mockPayload,
       });
-      
+
       (User.findOne as jest.Mock).mockResolvedValue(mockUser);
 
       const result = await authService.authenticateWithGoogle('valid-token');
@@ -44,19 +43,19 @@ describe('AuthService', () => {
     it('should create new user if not exists', async () => {
       const mockPayload = {
         email: 'new@example.com',
-        sub: 'new-google-id'
+        sub: 'new-google-id',
       };
 
       const mockUser = {
-        id: 'new-user-id',
+        _id: 'new-user-id',
         email: mockPayload.email,
-        googleId: mockPayload.sub
+        googleId: mockPayload.sub,
       };
 
       (OAuth2Client.prototype.verifyIdToken as jest.Mock).mockResolvedValue({
-        getPayload: () => mockPayload
+        getPayload: () => mockPayload,
       });
-      
+
       (User.findOne as jest.Mock).mockResolvedValue(null);
       (User.create as jest.Mock).mockResolvedValue(mockUser);
 

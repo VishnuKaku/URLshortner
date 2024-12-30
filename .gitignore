@@ -1,1 +1,5 @@
 # Git ignore file 
+# In .gitignore
+.env
+.env.test
+.env.production

@@ -1,82 +1,72 @@
-// Unit test for overall aggregator 
-// src/analytics/aggregators/overallAggregator.ts
-import { Analytics } from '../../models/Analytics';
-import { IOverallAnalytics, IOSStats, IDeviceStats } from '../../models/interfaces';
+// tests/unit/aggregators/overallAggregator.test.ts
+import { OverallAggregator } from '../../../src/analytics/aggregators/overallAggregator';
+import Analytics from '../../../src/models/Analytics';
+import { Url } from '../../../src/models/Url';
 
-export class OverallAggregator {
-  async aggregate(userId: string): Promise<IOverallAnalytics> {
-    const analytics = await Analytics.find({ userId });
+jest.mock('../../../src/models/Analytics');
+jest.mock('../../../src/models/Url');
 
-    const totalUrls = await this.calculateTotalUrls(userId);
-    const totalClicks = analytics.length;
-    const uniqueClicks = new Set(analytics.map(a => a.ipAddress)).size;
+describe('OverallAggregator', () => {
+    it('should aggregate overall analytics data', async () => {
+        const mockAnalytics = [
+            {
+                _id: 'analyticId1',
+                urlId: 'urlId1',
+                accessTime: new Date(),
+                ipAddress: '127.0.0.1',
+                device: {
+                    os: 'windows',
+                    type: 'desktop',
+                },
+                location: {
+                    country: 'US',
+                },
+            },
+            {
+                _id: 'analyticId2',
+                urlId: 'urlId2',
+                accessTime: new Date(),
+                ipAddress: '192.168.1.1',
+                device: {
+                    os: 'macos',
+                    type: 'mobile',
+                },
+                location: {
+                    country: 'CA',
+                },
+            },
+        ] as any;
 
-    const clicksByDate = this.calculateClicksByDate(analytics);
-    const osStats = await this.calculateOSStats(analytics);
-    const deviceStats = await this.calculateDeviceStats(analytics);
+        const mockUrls = [
+            {
+                _id: 'urlId1',
+                shortCode: 'short1',
+            },
+            {
+                _id: 'urlId2',
+                shortCode: 'short2',
+            },
+        ] as any;
+        (Analytics.find as jest.Mock).mockReturnValue({
+            populate: jest.fn().mockResolvedValue(mockAnalytics)
+          });
+        (Analytics.distinct as jest.Mock).mockResolvedValue(['urlId1', 'urlId2']);
+        const overallAggregator = new OverallAggregator();
+        const startDate = new Date();
+        const endDate = new Date();
+        const result = await overallAggregator.aggregate('test-user', startDate, endDate);
 
-    return {
-      totalUrls,
-      totalClicks,
-      uniqueClicks,
-      clicksByDate,
-      osType: osStats,
-      deviceType: deviceStats
-    };
-  }
-
-  private async calculateTotalUrls(userId: string): Promise<number> {
-    const urls = await Analytics.distinct('urlId', { userId });
-    return urls.length;
-  }
-
-  private calculateClicksByDate(analytics: any[]) {
-    const clickMap = new Map<string, number>();
-    
-    analytics.forEach(analytic => {
-      const date = analytic.accessTime.toISOString().split('T')[0];
-      clickMap.set(date, (clickMap.get(date) || 0) + 1);
+        expect(result).toBeDefined();
+        expect(result.totalClicks).toBe(mockAnalytics.length);
+        expect(result.uniqueClicks).toBe(2);
+        expect(result.deviceType).toEqual([
+            { deviceName: 'desktop', uniqueClicks: 1, uniqueUsers: 1 },
+            { deviceName: 'mobile', uniqueClicks: 1, uniqueUsers: 1 },
+        ]);
+        expect(result.osType).toEqual([
+            { osName: 'windows', uniqueClicks: 1, uniqueUsers: 1 },
+            { osName: 'macos', uniqueClicks: 1, uniqueUsers: 1 },
+        ]);
+      expect(result.totalUrls).toEqual(2);
     });
-
-    return Array.from(clickMap.entries())
-      .map(([date, count]) => ({ date, count }))
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-      .slice(0, 7); // Last 7 days
-  }
-
-  private async calculateOSStats(analytics: any[]): Promise<IOSStats[]> {
-    const osMap = new Map<string, Set<string>>();
-
-    analytics.forEach(analytic => {
-      const os = analytic.device?.os || 'unknown';
-      if (!osMap.has(os)) {
-        osMap.set(os, new Set());
-      }
-      osMap.get(os)?.add(analytic.ipAddress);
-    });
-
-    return Array.from(osMap.entries()).map(([osName, ips]) => ({
-      osName,
-      uniqueClicks: ips.size,
-      uniqueUsers: ips.size // In this case, unique users = unique IPs
-    }));
-  }
-
-  private async calculateDeviceStats(analytics: any[]): Promise<IDeviceStats[]> {
-    const deviceMap = new Map<string, Set<string>>();
-
-    analytics.forEach(analytic => {
-      const deviceType = analytic.device?.type || 'unknown';
-      if (!deviceMap.has(deviceType)) {
-        deviceMap.set(deviceType, new Set());
-      }
-      deviceMap.get(deviceType)?.add(analytic.ipAddress);
-    });
-
-    return Array.from(deviceMap.entries()).map(([deviceName, ips]) => ({
-      deviceName,
-      uniqueClicks: ips.size,
-      uniqueUsers: ips.size
-    }));
-  }
-}
+});

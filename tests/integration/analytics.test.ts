@@ -1,12 +1,13 @@
-// Integration test for analytics 
+// Integration test for analytics
 import request from 'supertest';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import mongoose from 'mongoose';
 import app from '../../src/app';
-import { URLModel } from '../../src/models/URL';
-import { Analytics } from '../../src/models/Analytics';
+import { Url } from '../../src/models/Url';
+import Analytics from '../../src/models/Analytics';
 import { User } from '../../src/models/User';
 import { RedisClient } from '../../src/cache/redis/client';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from '@jest/globals';
 
 describe('Analytics Integration Tests', () => {
   let mongoServer: MongoMemoryServer;
@@ -33,14 +34,14 @@ describe('Analytics Integration Tests', () => {
   });
 
   beforeEach(async () => {
-    await URLModel.deleteMany({});
+    await Url.deleteMany({});
     await Analytics.deleteMany({});
   });
 
   describe('GET /api/analytics/:alias', () => {
     it('should return URL analytics', async () => {
       // Create test URL and analytics data
-      const url = await URLModel.create({
+      const url = await Url.create({
         userId,
         longUrl: 'https://example.com',
         shortCode: 'test-analytics',
@@ -77,14 +78,14 @@ describe('Analytics Integration Tests', () => {
   describe('GET /api/analytics/topic/:topic', () => {
     it('should return topic-based analytics', async () => {
       // Create test URLs and analytics data for a topic
-      const url1 = await URLModel.create({
+      const url1 = await Url.create({
         userId,
         longUrl: 'https://example1.com',
         shortCode: 'test-topic-1',
         topic: 'activation'
       });
 
-      const url2 = await URLModel.create({
+      const url2 = await Url.create({
         userId,
         longUrl: 'https://example2.com',
         shortCode: 'test-topic-2',

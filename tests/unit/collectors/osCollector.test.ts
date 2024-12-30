@@ -1,11 +1,18 @@
-// Unit test for OS collector 
-// src/analytics/collectors/osCollector.ts
-import UAParser from 'ua-parser-js';
+// tests/unit/collectors/osCollector.test.ts
+import { OSCollector } from '../../../src/analytics/collectors/osCollector';
 
-export class OSCollector {
-  collect(userAgent: string): string {
-    const parser = new UAParser(userAgent);
-    const os = parser.getOS();
-    return os.name || 'unknown';
-  }
-}
+describe('OSCollector', () => {
+  it('should collect the OS name from a user agent', () => {
+      const userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36';
+      const osCollector = new OSCollector();
+      const osName = osCollector.collect(userAgent);
+      expect(osName).toBe('Windows');
+   });
+
+   it('should return "unknown" for an unknown user agent', () => {
+    const userAgent = 'unknown';
+      const osCollector = new OSCollector();
+     const osName = osCollector.collect(userAgent);
+     expect(osName).toBe('unknown');
+    });
+});
