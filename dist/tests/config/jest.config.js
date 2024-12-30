@@ -1,27 +1,23 @@
-const config = {
-    preset: 'ts-jest/presets/default-esm', // Ensures ESM compatibility
-    testEnvironment: 'node', // Node.js environment
-    moduleFileExtensions: ['ts', 'js', 'json'], // Added `json` for completeness
+// tests/config/jest.config.ts
+export default {
+    preset: 'ts-jest',
+    testEnvironment: 'node',
+    roots: ['<rootDir>/../../tests'],
+    moduleFileExtensions: ['ts', 'js'],
+    testMatch: ['**/*.test.ts'],
     transform: {
-        '^.+\\.tsx?$': ['ts-jest', { tsconfig: 'tsconfig.json' }], // Use your TypeScript config
-        '^.+\\.js$': 'babel-jest' // Transform JS files with Babel
+        '^.+\\.tsx?$': [
+            'ts-jest',
+            {
+                useESM: true,
+            },
+        ],
     },
     moduleNameMapper: {
-        '^@/(.*)$': '<rootDir>/src/$1' // Maps `@/` to the `src` folder
+        '^@/(.*)$': '<rootDir>/../../src/$1',
     },
-    setupFilesAfterEnv: ['<rootDir>/tests/config/setup.ts'], // Setup files for initializing test environment
-    testMatch: ['<rootDir>/tests/**/*.test.ts'], // Specifies test files
-    rootDir: '../../', // Adjust root directory
     transformIgnorePatterns: [
-        '/node_modules/(?!(nanoid|ua-parser-js)/)', // Transforms specific modules (e.g., nanoid)
+        'node_modules/(?!(nanoid)/)',
     ],
-    moduleDirectories: ['node_modules', '<rootDir>/src'], // Module resolution paths
-    testTimeout: 30000, // Increase timeout for long-running tests
-    extensionsToTreatAsEsm: ['.ts'], // Treat `.ts` files as ESM
-    globals: {
-        'ts-jest': {
-            useESM: true // Ensure ts-jest uses ESM
-        }
-    }
+    setupFiles: ['<rootDir>/setup.ts']
 };
-export default config;
